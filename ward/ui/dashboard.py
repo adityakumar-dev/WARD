@@ -15,6 +15,7 @@ from __future__ import annotations
 from typing import Optional
 
 import streamlit as st
+import textwrap
 
 from models.fusion import FusionResult
 from models.labels import WARD_CLASSES
@@ -808,20 +809,22 @@ def render_css() -> None:
 def render_header(mode: str, backend_name: str) -> None:
     badge_cls = "mode-dev" if mode == "dev" else "mode-prod"
     st.markdown(
-        f"""
-        <div class="ward-header">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-                <div>
-                    <div class="ward-title">W▸A▸R▸D</div>
-                    <div class="ward-subtitle">AI Road Surface Condition Intelligence</div>
-                </div>
-                <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:0.4rem;">
-                    <div class="mode-badge {badge_cls}">{mode.upper()} MODE</div>
-                    <div style="font-family:'JetBrains Mono',monospace;font-size:0.56rem;color:#374151;">{backend_name}</div>
+        textwrap.dedent(
+            f"""
+            <div class="ward-header">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                    <div>
+                        <div class="ward-title">W▸A▸R▸D</div>
+                        <div class="ward-subtitle">AI Road Surface Condition Intelligence</div>
+                    </div>
+                    <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:0.4rem;">
+                        <div class="mode-badge {badge_cls}">{mode.upper()} MODE</div>
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:0.56rem;color:#374151;">{backend_name}</div>
+                    </div>
                 </div>
             </div>
-        </div>
-        """,
+            """
+        ).strip(),
         unsafe_allow_html=True,
     )
 
@@ -838,16 +841,18 @@ def render_main_condition(
     """Condition hero card + 4 class score cards."""
     if fusion is None or temporal is None:
         st.markdown(
-            """
-            <div class="awaiting-card">
-                <div class="awaiting-pulse"></div>
-                <div style="color:#374151;font-family:'JetBrains Mono',monospace;
-                            letter-spacing:0.22em;font-size:0.78rem;">AWAITING INPUT</div>
-                <div style="color:#1f2937;font-size:0.68rem;margin-top:0.5rem;">
-                    Upload an image, video or frame folder to begin
+            textwrap.dedent(
+                """
+                <div class="awaiting-card">
+                    <div class="awaiting-pulse"></div>
+                    <div style="color:#374151;font-family:'JetBrains Mono',monospace;
+                                letter-spacing:0.22em;font-size:0.78rem;">AWAITING INPUT</div>
+                    <div style="color:#1f2937;font-size:0.68rem;margin-top:0.5rem;">
+                        Upload an image, video or frame folder to begin
+                    </div>
                 </div>
-            </div>
-            """,
+                """
+            ).strip(),
             unsafe_allow_html=True,
         )
         return
@@ -878,47 +883,43 @@ def render_main_condition(
              "display:flex;align-items:center;justify-content:center;flex-direction:column;")
 
     st.markdown(
-        f"""
-        <div class="condition-card {analyzing_cls}" style="border-color:{color}22;box-shadow:0 0 40px {_hex_rgba(color,0.06)},inset 0 0 40px {_hex_rgba(color,0.02)};">
-            <!-- ambient glow -->
-            <div class="cond-glow" style="background:radial-gradient(ellipse at 50% 100%, {glow_color} 0%, transparent 70%);"></div>
-
-            <div class="condition-sublabel">WARD CONDITION</div>
-            <div class="condition-label-huge" style="color:{color};">{emoji} {label.upper()}</div>
-
-            <!-- metric rings row -->
-            <div style="margin-top:1.75rem;display:flex;justify-content:center;gap:2.5rem;align-items:flex-start;position:relative;z-index:1;">
-
-                <!-- Confidence ring -->
-                <div class="ring-wrap">
-                    <div style="{ring}background:{conf_bg};">
-                        <div style="{inner}">
-                            <span style="font-family:'JetBrains Mono',monospace;font-size:1rem;font-weight:700;color:{color};line-height:1;">{conf_pct}%</span>
+        textwrap.dedent(
+            f"""
+            <div class="condition-card {analyzing_cls}" style="border-color:{color}22;box-shadow:0 0 40px {_hex_rgba(color,0.06)},inset 0 0 40px {_hex_rgba(color,0.02)};">
+                <!-- ambient glow -->
+                <div class="cond-glow" style="background:radial-gradient(ellipse at 50% 100%, {glow_color} 0%, transparent 70%);"></div>
+                <div class="condition-sublabel">WARD CONDITION</div>
+                <div class="condition-label-huge" style="color:{color};">{emoji} {label.upper()}</div>
+                <!-- metric rings row -->
+                <div style="margin-top:1.75rem;display:flex;justify-content:center;gap:2.5rem;align-items:flex-start;position:relative;z-index:1;">
+                    <!-- Confidence ring -->
+                    <div class="ring-wrap">
+                        <div style="{ring}background:{conf_bg};">
+                            <div style="{inner}">
+                                <span style="font-family:'JetBrains Mono',monospace;font-size:1rem;font-weight:700;color:{color};line-height:1;">{conf_pct}%</span>
+                            </div>
                         </div>
+                        <div class="ring-label">CONFIDENCE</div>
                     </div>
-                    <div class="ring-label">CONFIDENCE</div>
-                </div>
-
-                <!-- Stability ring -->
-                <div class="ring-wrap">
-                    <div style="{ring}background:{stab_bg};">
-                        <div style="{inner}">
-                            <span style="font-family:'JetBrains Mono',monospace;font-size:0.82rem;font-weight:700;color:{stab_color};line-height:1;">{stab_label}</span>
-                            <span style="font-size:0.5rem;color:#374151;letter-spacing:0.1em;margin-top:1px;">{stab_pct}%</span>
+                    <!-- Stability ring -->
+                    <div class="ring-wrap">
+                        <div style="{ring}background:{stab_bg};">
+                            <div style="{inner}">
+                                <span style="font-family:'JetBrains Mono',monospace;font-size:0.82rem;font-weight:700;color:{stab_color};line-height:1;">{stab_label}</span>
+                                <span style="font-size:0.5rem;color:#374151;letter-spacing:0.1em;margin-top:1px;">{stab_pct}%</span>
+                            </div>
                         </div>
+                        <div class="ring-label">STABILITY</div>
                     </div>
-                    <div class="ring-label">STABILITY</div>
+                    <!-- Status -->
+                    <div class="ring-wrap" style="padding-top:22px;">
+                        {pill}
+                        <div class="ring-label" style="margin-top:0.55rem;">STATUS</div>
+                    </div>
                 </div>
-
-                <!-- Status -->
-                <div class="ring-wrap" style="padding-top:22px;">
-                    {pill}
-                    <div class="ring-label" style="margin-top:0.55rem;">STATUS</div>
-                </div>
-
             </div>
-        </div>
-        """,
+            """
+        ).strip(),
         unsafe_allow_html=True,
     )
 
@@ -938,17 +939,19 @@ def render_main_condition(
 
         with cols[i]:
             st.markdown(
-                f"""
-                <div class="class-card {active_cls}" style="--class-color:{ccol};">
-                    <div style="display:flex;justify-content:space-between;align-items:center;position:relative;z-index:1;">
-                        <div class="class-name" style="color:{ccol};">{cls.upper()}</div>
-                        <div class="class-prob" style="color:{ccol if is_active else '#e2e8f0'};">{pct}%</div>
+                textwrap.dedent(
+                    f"""
+                    <div class="class-card {active_cls}" style="--class-color:{ccol};">
+                        <div style="display:flex;justify-content:space-between;align-items:center;position:relative;z-index:1;">
+                            <div class="class-name" style="color:{ccol};">{cls.upper()}</div>
+                            <div class="class-prob" style="color:{ccol if is_active else '#e2e8f0'};">{pct}%</div>
+                        </div>
+                        <div class="prob-bar-bg" style="position:relative;z-index:1;">
+                            <div class="prob-bar-fill" style="width:{pct}%;background:linear-gradient(90deg,{ccol}cc,{ccol});"></div>
+                        </div>
+                        {candidate_txt}
                     </div>
-                    <div class="prob-bar-bg" style="position:relative;z-index:1;">
-                        <div class="prob-bar-fill" style="width:{pct}%;background:linear-gradient(90deg,{ccol}cc,{ccol});"></div>
-                    </div>
-                    {candidate_txt}
-                </div>
-                """,
+                    """
+                ).strip(),
                 unsafe_allow_html=True,
             )
