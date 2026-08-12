@@ -127,30 +127,110 @@ def process_one_image(image, timestamp_s: float = 0.0, filename: Optional[str] =
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Processing display — 100% native Streamlit
-# Uses st.status + st.progress + st.image + st.metric (no HTML slots)
+# Processing display — Inline card (renders inside the active layout column)
 # ═══════════════════════════════════════════════════════════════════════════
 class _ProcessingPopup:
     """
-    Beautiful processing status display built entirely from native
-    Streamlit widgets. st.status provides the expandable card,
-    st.progress provides the animated bar, st.image shows live frames,
-    st.metric shows read / dropped / ETA counters.
+    Inline live analysis status card.
+    Renders directly within the input/preview container so the live frame feed,
+    progress bar, and real-time inference statistics are cleanly visible without
+    blocking the rest of the dashboard or overlapping controls.
     """
 
+    _LABEL_COLORS = {
+        "wet": "#ef4444", "dry": "#22c55e",
+        "damp": "#f59e0b", "drying": "#f97316",
+    }
+
     def __init__(self, source_name: str):
-        self._status = st.status(
-            f"⚡ Analysing — {source_name}",
-            expanded=True,
-            state="running",
+        self._source = source_name
+        self._slot   = st.empty()
+        self._render(None, "—", 0.0, 0, 1, 0, 0.0)
+
+    @staticmethod
+    def _b64(pil_image) -> str:
+        from io import BytesIO
+        import base64
+        buf  = BytesIO()
+        thumb = pil_image.copy()
+        thumb.thumbnail((640, 360))
+        thumb.save(buf, format="JPEG", quality=75)
+        return base64.b64encode(buf.getvalue()).decode()
+
+    def _render(
+        self,
+        frame_b64: "str | None",
+        label: str,
+        confidence: float,
+        frame_idx: int,
+        total_frames: int,
+        frames_dropped: int,
+        elapsed: float,
+    ) -> None:
+        prog     = int(min(frame_idx / total_frames, 1.0) * 100) if total_frames > 0 else 0
+        eta      = (elapsed / frame_idx * (total_frames - frame_idx)) if frame_idx > 0 else 0
+        eta_s    = f"{eta:.0f}s" if eta > 0 else "—"
+        lcolor   = self._LABEL_COLORS.get(label.lower(), "#94a3b8")
+        drop_col = "#ef4444" if frames_dropped > 0 else "#6b7280"
+
+        img_html = (
+            f'<div style="border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);'
+            f'background:#000;margin-bottom:0.75rem;">'
+            f'<img src="data:image/jpeg;base64,{frame_b64}" '
+            f'style="width:100%;max-height:340px;object-fit:contain;display:block;" />'
+            f'</div>'
+            if frame_b64 else
+            '<div style="height:180px;background:rgba(255,255,255,0.02);'
+            'border:1px solid rgba(255,255,255,0.05);border-radius:12px;display:flex;'
+            'align-items:center;justify-content:center;color:#374151;'
+            'font-family:\'JetBrains Mono\',monospace;font-size:0.75rem;'
+            'letter-spacing:0.15em;margin-bottom:0.75rem;">INITIALISING LIVE FEED…</div>'
         )
-        self._status.__enter__()
-        self._bar    = st.progress(0.0, text="Starting…")
-        self._frame  = st.empty()
-        c1, c2, c3  = st.columns(3)
-        self._c_read    = c1.empty()
-        self._c_dropped = c2.empty()
-        self._c_eta     = c3.empty()
+
+        self._slot.html(
+            f"""<div style="background:rgba(10,13,18,0.92);border:1px solid rgba(34,197,94,0.3);
+            border-radius:16px;padding:1.2rem;margin-bottom:1rem;
+            box-shadow:0 12px 40px rgba(0,0,0,0.6);">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+    <div style="display:flex;align-items:center;gap:0.5rem;overflow:hidden;">
+      <div style="width:8px;height:8px;border-radius:50%;background:#22c55e;
+                  box-shadow:0 0 10px #22c55e;flex-shrink:0;"></div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:0.68rem;font-weight:600;
+                  color:#22c55e;letter-spacing:0.16em;text-transform:uppercase;
+                  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+        ANALYSING — {self._source}
+      </div>
+    </div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:#475569;flex-shrink:0;">
+      Frame {frame_idx} / {total_frames} ({prog}%)
+    </div>
+  </div>
+  {img_html}
+  <div style="height:6px;background:rgba(255,255,255,0.05);border-radius:6px;overflow:hidden;margin-bottom:0.85rem;">
+    <div style="height:6px;width:{prog}%;background:linear-gradient(90deg,#22c55e,#16a34a);border-radius:6px;transition:width 0.2s;"></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0.4rem;text-align:center;
+              background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);
+              border-radius:10px;padding:0.6rem 0.4rem;">
+    <div>
+      <div style="font-size:0.52rem;color:#475569;letter-spacing:0.12em;text-transform:uppercase;">CONDITION</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:0.85rem;font-weight:700;color:{lcolor};">{label.upper()}</div>
+    </div>
+    <div>
+      <div style="font-size:0.52rem;color:#475569;letter-spacing:0.12em;text-transform:uppercase;">CONFIDENCE</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:0.85rem;font-weight:600;color:#e2e8f0;">{int(confidence*100)}%</div>
+    </div>
+    <div>
+      <div style="font-size:0.52rem;color:#475569;letter-spacing:0.12em;text-transform:uppercase;">DROPPED</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:0.85rem;font-weight:600;color:{drop_col};">{frames_dropped}</div>
+    </div>
+    <div>
+      <div style="font-size:0.52rem;color:#475569;letter-spacing:0.12em;text-transform:uppercase;">ETA</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:0.85rem;font-weight:600;color:#e2e8f0;">{eta_s}</div>
+    </div>
+  </div>
+</div>"""
+        )
 
     def update(
         self,
@@ -161,31 +241,22 @@ class _ProcessingPopup:
         total_frames: int,
         frames_dropped: int,
         elapsed: float,
-    ):
-        prog  = min(frame_idx / total_frames, 1.0) if total_frames > 0 else 0.0
-        eta   = (elapsed / frame_idx * (total_frames - frame_idx)) if frame_idx > 0 else 0
-        eta_s = f"{eta:.0f}s" if eta > 0 else "—"
-
-        self._bar.progress(
-            prog,
-            text=f"Frame **{frame_idx}** / {total_frames}  —  {label.upper()} {confidence:.0%}",
+    ) -> None:
+        self._render(
+            self._b64(frame_image),
+            label, confidence,
+            frame_idx, total_frames,
+            frames_dropped, elapsed,
         )
-        self._frame.image(frame_image, use_container_width=True)
-        self._c_read.metric("Read",    frame_idx)
-        self._c_dropped.metric(
-            "Dropped", frames_dropped,
-            delta=f"-{frames_dropped}" if frames_dropped > 0 else None,
-            delta_color="inverse",
-        )
-        self._c_eta.metric("ETA", eta_s)
 
-    def complete(self, frames_processed: int, frames_dropped: int):
-        self._bar.progress(1.0, text=f"✓ Complete — {frames_processed} frames")
-        self._status.__exit__(None, None, None)
+    def complete(self, frames_processed: int, frames_dropped: int) -> None:
+        self._slot.empty()
 
-    def error(self, msg: str):
+    def error(self, msg: str) -> None:
+        self._slot.empty()
         st.error(msg)
-        self._status.__exit__(None, None, None)
+
+
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -205,7 +276,6 @@ def _popup_timeline():
 
 @st.dialog("⚙ System Status", width="large")
 def _popup_system():
-    render_css()  # re-inject styles — dialogs run in an isolated scope
     col_a, col_b = st.columns(2)
     with col_a:
         render_system_status(
