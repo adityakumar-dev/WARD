@@ -87,7 +87,7 @@ def render_css() -> None:
             font-family: 'Inter', sans-serif;
         }
         .main .block-container {
-            padding-top: 1rem;
+            padding-top: 0 !important;
             padding-bottom: 2rem;
             max-width: 1600px;
         }
